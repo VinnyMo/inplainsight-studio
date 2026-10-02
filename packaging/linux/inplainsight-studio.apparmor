@@ -1,0 +1,9 @@
+# App-specific permission for Chromium's user-namespace sandbox on Ubuntu 24+.
+# This profile is not a filesystem/network confinement policy. Electron's
+# renderer sandbox remains enabled. No wildcard executable paths or sysctls.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile inplainsight-studio /opt/inplainsight-studio/inplainsight-studio flags=(unconfined) {
+  userns,
+}

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  remove|deconfigure)
+    if [ -r /sys/module/apparmor/parameters/enabled ] &&
+       grep -q '^Y' /sys/module/apparmor/parameters/enabled; then
+      if [ -r /sys/kernel/security/apparmor/profiles ] &&
+         grep -q '^inplainsight-studio ' /sys/kernel/security/apparmor/profiles; then
+        /sbin/apparmor_parser --remove /etc/apparmor.d/inplainsight-studio
+      fi
+    fi
+    ;;
+esac
+exit 0

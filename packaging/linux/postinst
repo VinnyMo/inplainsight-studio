@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  configure|abort-upgrade|abort-remove|abort-deconfigure)
+    # Fail installation visibly if an active AppArmor policy cannot be loaded.
+    # Never compensate by disabling sandboxing or changing a global setting.
+    if [ -r /sys/module/apparmor/parameters/enabled ] &&
+       grep -q '^Y' /sys/module/apparmor/parameters/enabled; then
+      /sbin/apparmor_parser --replace /etc/apparmor.d/inplainsight-studio
+    fi
+    ;;
+esac
+exit 0

@@ -4,12 +4,17 @@ Experimental, offline file-to-PNG encryption and recovery desktop prototype. **N
 
 A file and password become a self-contained PNG. The actual encrypted bytes live in its RGB pixels. Recovery requires the original PNG and the password, not a database, account, server, sidecar, or expiry service. The PNG looks like noise: this is an encrypted image container, not covert steganography.
 
+## Ubuntu installer
+
+An experimental Ubuntu amd64 `.deb` bundles the app and Electron, with an applications-menu entry and normal package-manager removal. See [installing and testing on Ubuntu](docs/INSTALL-UBUNTU.md), including the app-specific AppArmor permission needed to keep Chromium sandboxing enabled. Native desktop installation/launch still needs hardware QA.
+
 ## Run from source
 
 Requires Node.js 22+ and npm. Windows, macOS, and Linux are intended targets; native Windows/macOS packaging and signing are not yet verified.
 
 ```sh
 npm ci
+npm run setup:electron
 npm test
 npm run check
 npm start
@@ -26,7 +31,7 @@ Choose **Create PNG**, pick a file, enter and confirm a strong password, and cho
 - Fixed 1024-pixel-wide RGB PNG profile; arbitrary image formats and PNG editors are unsupported
 - Any file type can be encrypted; video carrier encoding is a separate future discussion
 - No cloud service, password reset, telemetry, account, expiration, or remote access revocation
-- No releases, installers, code signing, independent security audit, or production-security claim
+- No signed releases, independent security audit, or production-security claim
 
 **Keep the PNG unchanged.** Resizing, screenshots, JPEG conversion, filters, or services that rewrite images may permanently destroy the data. Transfer it as an original file. Use a long unique passphrase; a lost password cannot be recovered. Keep backups of your original files.
 
