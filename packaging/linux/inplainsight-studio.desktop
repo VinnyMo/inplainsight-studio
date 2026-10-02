@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=InPlainSight Studio
+Comment=Experimental offline encrypted PNG creation and recovery
+Exec=/opt/inplainsight-studio/inplainsight-studio
+TryExec=/opt/inplainsight-studio/inplainsight-studio
+Icon=inplainsight-studio
+Terminal=false
+Categories=Utility;Security;
+Keywords=Encrypt;Decrypt;PNG;Offline;
+StartupNotify=true
+StartupWMClass=inplainsight-studio

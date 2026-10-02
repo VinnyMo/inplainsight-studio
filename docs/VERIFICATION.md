@@ -19,7 +19,8 @@ Checked 2026-10-02 in the Linux development executor.
 
 - Native Linux GUI end-to-end: runtime installed, but shell executor has no X server/$DISPLAY; Electron exits at platform initialization. No sandbox bypass attempted
 - Visual browser preview: Chromium launch blocked by executor socket restrictions; cloud browser disallows file:// URLs. No visual QA pass is claimed
-- Windows/macOS GUI, installation, packaging, signing/notarization, or shipped executables
+- Windows/macOS GUI, installation, packaging or signing/notarization
+- Native Ubuntu .deb installation, kernel AppArmor profile loading and real desktop launch (the package and its extracted payload have separate automated checks; see INSTALL-UBUNTU.md)
 - Production resource profiling, fuzzing, side-channel analysis, secure erase, or adversarial external audit
 
-A cross-platform GitHub Actions core/syntax test matrix is included; check the exact PR commit's CI before treating it as passed. These are source tests, not native desktop UI certification. No binaries or releases are published.
+A cross-platform GitHub Actions core/syntax test matrix is included; check the exact PR commit's CI before treating it as passed. These are source tests, not native desktop UI certification. The Ubuntu installer workflow builds a private experimental artifact. No signed releases or production certification are implied.

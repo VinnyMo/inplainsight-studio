@@ -19,3 +19,35 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
+  ubuntu-installer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run package:deb
+      - run: npm run verify:deb
+      - name: Check desktop entry and AppArmor syntax without loading policy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils apparmor
+          desktop-file-validate packaging/linux/inplainsight-studio.desktop
+          apparmor_parser --skip-kernel-load --skip-read-cache packaging/linux/inplainsight-studio.apparmor
+      - name: Verify reproducible archive with the same toolchain
+        run: |
+          cp dist/*.deb /tmp/first-build.deb
+          npm run package:deb
+          cmp /tmp/first-build.deb dist/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inplainsight-studio-ubuntu-amd64-test
+          path: |
+            dist/*.deb
+            dist/*.sha256
+          retention-days: 14
+          if-no-files-found: error
