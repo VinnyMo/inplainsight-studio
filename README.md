@@ -14,6 +14,7 @@ Requires Node.js 22+ and npm. Windows, macOS, and Linux are intended targets; na
 
 ```sh
 npm ci
+npm run setup:electron
 npm test
 npm run check
 npm start

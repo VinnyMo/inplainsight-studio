@@ -9,7 +9,8 @@
     "test": "node --test test/*.test.cjs",
     "check": "node --check src/core.cjs && node --check src/main.cjs && node --check src/preload.cjs && node --check src/renderer.js && node --check src/worker.cjs && node --check scripts/build-deb.cjs && node --check scripts/verify-deb.cjs",
     "package:deb": "node scripts/build-deb.cjs",
-    "verify:deb": "node scripts/verify-deb.cjs"
+    "verify:deb": "node scripts/verify-deb.cjs",
+    "setup:electron": "node node_modules/electron/install.js"
   },
   "engines": {
     "node": ">=22.12.0"

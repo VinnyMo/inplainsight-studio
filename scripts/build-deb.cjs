@@ -12,6 +12,7 @@ async function main() {
   const pkg = require('../package.json');
   const lock = require('../package-lock.json');
   const electron = path.join(root, 'node_modules/electron/dist');
+  if (!fs.existsSync(path.join(electron, 'version'))) throw new Error('Electron runtime missing; run npm run setup:electron.');
   if (fs.readFileSync(path.join(electron, 'version'), 'utf8').trim() !== pkg.devDependencies.electron) throw new Error('Electron runtime version mismatch; run npm ci.');
   const elf = fs.readFileSync(path.join(electron, 'electron'));
   if (elf.readUInt32BE(0) !== 0x7f454c46 || elf[4] !== 2 || elf.readUInt16LE(18) !== 62) throw new Error('Electron must be a Linux amd64 ELF.');

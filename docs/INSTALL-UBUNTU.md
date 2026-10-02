@@ -34,6 +34,7 @@ On Linux x86_64 with Node 22.12+ (CI uses Node 22), npm, `dpkg-deb` and the Elec
 
 ```sh
 npm ci
+npm run setup:electron
 npm run check
 npm test
 npm run package:deb
