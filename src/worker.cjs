@@ -8,8 +8,18 @@ const { encodeFile, decodeFile, FormatError } = require('./core.cjs');
   workerData.password = null;
   try {
     const operation = workerData.mode === 'encode' ? encodeFile : decodeFile;
-    await operation(workerData.inputPath, password, workerData.outputPath);
-    parentPort.postMessage({ ok: true });
+    const destination = workerData.chooseDestination ? (name) => {
+      password = null;
+      return new Promise((resolve, reject) => {
+        parentPort.once('message', (message) => {
+          if (message && message.type === 'destination' && (message.outputPath === null || typeof message.outputPath === 'string')) resolve(message.outputPath);
+          else reject(new Error('Invalid destination response.'));
+        });
+        parentPort.postMessage({ type: 'prepared', name });
+      });
+    } : workerData.outputPath;
+    const result = await operation(workerData.inputPath, password, destination, workerData.appearance);
+    parentPort.postMessage({ ok: true, canceled: Boolean(result.canceled) });
   } catch (error) {
     parentPort.postMessage({
       ok: false,

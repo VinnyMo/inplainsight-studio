@@ -12,21 +12,12 @@
   <div class="app-shell">
     <header class="app-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span>InPlainSight <strong>Studio</strong></span></div>
-      <span class="offline-badge"><span aria-hidden="true"></span> Offline by design</span>
     </header>
 
     <main>
       <section class="introduction" aria-labelledby="page-title">
-        <div class="intro-copy">
-          <p class="eyebrow">EXPERIMENTAL · LOCAL FILE ENCRYPTION</p>
-          <h1 id="page-title">A file.<br>A password.<br><span>A different picture.</span></h1>
-          <p class="lead">Turn a file into an encrypted PNG. Bring back the original with the same password.</p>
-          <div class="specs"><span>Up to 16 MiB per file</span><span>No account. No upload.</span></div>
-        </div>
-        <div class="pixel-art" aria-hidden="true">
-          <div class="pixel-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <span class="pixel-caption">YOUR FILE, ENCRYPTED INTO PIXELS</span>
-        </div>
+        <h1 id="page-title">Encrypt or recover a file</h1>
+        <p class="lead">Create an encrypted PNG, or recover the original file with its password.</p>
       </section>
 
       <section class="workspace" aria-label="File encryption studio">
@@ -37,12 +28,13 @@
 
         <form id="operation-panel" role="tabpanel" aria-labelledby="encode-tab" novalidate>
           <div class="step-heading"><span class="step-number">01</span><h2 id="file-heading">Choose your source file</h2><span id="file-limit" class="step-note">Any file · max 16 MiB</span></div>
-          <button type="button" id="choose-file" class="file-picker" aria-describedby="file-help">
+          <button type="button" id="choose-file" class="file-picker">
             <span class="file-icon" aria-hidden="true">+</span>
             <span class="file-copy"><strong id="file-name">Choose a file</strong><span id="file-detail">Your original stays untouched</span></span>
             <span id="browse-label" class="browse-label">Browse files <span aria-hidden="true">→</span></span>
           </button>
-          <p id="file-help" class="field-hint">Files are processed on this computer. Nothing is uploaded.</p>
+
+          <div class="field appearance-field" id="appearance-field"><label for="appearance">PNG appearance</label><select id="appearance"><option value="glitch" selected>Glitch</option><option value="plain">Plain</option></select></div>
 
           <div class="step-heading password-heading"><span class="step-number">02</span><h2 id="password-heading">Set a strong password</h2></div>
           <div class="password-fields">
@@ -57,7 +49,7 @@
       </section>
 
       <aside class="warning" aria-labelledby="warning-title"><span class="warning-icon" aria-hidden="true">!</span><div><h2 id="warning-title">Keep the PNG exactly as saved</h2><p>Resizing, editing, screenshots, or image compression can destroy the hidden file. Share it as a file attachment and keep a backup. This experimental prototype has not been independently audited; don’t rely on it for irreplaceable or high-risk data.</p></div></aside>
-      <footer><span>LOCAL IN. LOCAL OUT.</span><span>Encryption protects the contents, not the fact that a file is hidden.</span></footer>
+      <footer>Encryption protects the contents, not the fact that a file is hidden.</footer>
     </main>
   </div>
 </body>

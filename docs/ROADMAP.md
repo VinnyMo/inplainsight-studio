@@ -1,6 +1,6 @@
 # Beyond the PNG prototype
 
-PNG v1 is the only implemented carrier. Video remains a design/benchmark discussion.
+Plain PNG v1 and reversible Glitch PNG v2 are implemented carriers. Video remains a design/benchmark discussion.
 
 Potential carriers include lossless video for density and robust high-contrast symbol grids plus error correction for lossy video/JPEG. The encrypted envelope should remain separate from media modulation, sync, and error correction; real encrypted bytes must travel in pixels/frames, without sidecars. Carrier transforms do not replace authenticated encryption.
 

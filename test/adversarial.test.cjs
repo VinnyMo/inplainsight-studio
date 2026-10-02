@@ -76,3 +76,19 @@ test('secretstream state is zeroed before free and duplicate pull buffers are cl
     assert.equal(pending.size,0); assert.equal(freed,3); assert.ok(messages.length>=2); assert.ok(messages.every(m=>m.every(b=>b===0)));
   } finally {w._free=originalFree;sodium.crypto_secretstream_xchacha20poly1305_init_push=originalPush;sodium.crypto_secretstream_xchacha20poly1305_init_pull=originalPull;sodium.crypto_secretstream_xchacha20poly1305_pull=originalRead;}
 });
+
+test('legacy v1 metadata paths are sanitized only as suggestions after full authentication', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ips-legacy-name-'));
+  const png = path.join(dir, 'legacy.png');
+  try {
+    for (const [name, expected] of [['C:\\private\\CON.txt', '_CON.txt'], ['../../escape.txt', 'escape.txt'], ['', 'recovered-file.bin']]) {
+      await fs.writeFile(png, c.envelopeToPng(await crafted({ name, size: 1 }, [{ data: Buffer.from('x'), tag: 3 }])));
+      const result = await c.decodeFile(png, PASS, suggested => {
+        assert.equal(suggested, expected);
+        return null;
+      });
+      assert.equal(result.canceled, true);
+      assert.deepEqual(await fs.readdir(dir), ['legacy.png']);
+    }
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});

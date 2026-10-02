@@ -3,7 +3,7 @@
 const ui = Object.fromEntries([
   'operation-panel', 'encode-tab', 'decode-tab', 'choose-file', 'file-name', 'file-detail', 'file-heading', 'file-limit',
   'browse-label', 'password-heading', 'password', 'confirmation', 'confirmation-field', 'toggle-password', 'password-help',
-  'submit-button', 'submit-label', 'submit-arrow', 'spinner', 'status',
+  'submit-button', 'submit-label', 'submit-arrow', 'spinner', 'status', 'appearance-field', 'appearance',
 ].map((id) => [id, document.getElementById(id)]));
 const selectedFiles = { encode: null, decode: null };
 let mode = 'encode';
@@ -57,6 +57,7 @@ function setMode(nextMode) {
   ui['file-limit'].textContent = mode === 'encode' ? 'Any file · max 16 MiB' : 'Original .png file';
   ui['password-heading'].textContent = mode === 'encode' ? 'Set a strong password' : 'Enter the original password';
   ui['confirmation-field'].hidden = mode === 'decode';
+  ui['appearance-field'].hidden = mode === 'decode';
   ui.password.placeholder = mode === 'encode' ? 'At least 12 characters' : 'The password used to encrypt';
   ui['password-help'].textContent = mode === 'encode'
     ? 'Use a password manager or several randomly chosen words. There is no password reset.'
@@ -67,7 +68,7 @@ function setMode(nextMode) {
 
 function setBusy(value, operation = false) {
   busy = value;
-  for (const element of document.querySelectorAll('button, input')) element.disabled = value;
+  for (const element of document.querySelectorAll('button, input, select')) element.disabled = value;
   ui['operation-panel'].setAttribute('aria-busy', String(value));
   ui.spinner.hidden = !value || !operation;
   ui['submit-arrow'].hidden = value && operation;
@@ -137,9 +138,11 @@ ui['operation-panel'].addEventListener('submit', async (event) => {
     return;
   }
   setBusy(true, true);
-  setStatus('Choose a new destination in the save dialog. Processing may take a moment.');
+  setStatus(mode === 'encode'
+    ? 'Choose a new destination in the save dialog. Processing may take a moment.'
+    : 'Verifying the PNG and password. Then choose where to save the recovered file.');
   try {
-    const pending = window.studio.process({ mode, password: ui.password.value, confirmation: ui.confirmation.value });
+    const pending = window.studio.process({ mode, password: ui.password.value, confirmation: ui.confirmation.value, appearance: ui.appearance.value });
     // Keep no form copy while the main process is working.
     clearPasswords();
     const result = await pending;
@@ -147,7 +150,7 @@ ui['operation-panel'].addEventListener('submit', async (event) => {
     else if (result.canceled) setStatus('Save canceled. No file was created. Enter your password again when you’re ready.');
     else setStatus(mode === 'encode'
       ? `Saved ${result.savedName}. Keep this PNG unchanged and store your password safely.`
-      : `Saved ${result.savedName}. Recovery verified. If needed, rename the recovered file with its original extension.`, 'success', true);
+      : `Saved ${result.savedName}. Recovery verified.`, 'success', true);
   } catch {
     setStatus('The operation was interrupted. Check your destination before trying again; use a new filename if a file was already saved.', 'error', true);
   } finally {

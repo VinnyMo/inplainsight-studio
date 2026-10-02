@@ -5,7 +5,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { Worker } = require('node:worker_threads');
-const { MAX_FILE_BYTES, MAX_PNG_BYTES } = require('./core.cjs');
+const { MAX_FILE_BYTES, MAX_PNG_BYTES, safeFilename } = require('./core.cjs');
 
 const PAGE_PATH = path.join(__dirname, 'index.html');
 const PAGE_URL = pathToFileURL(PAGE_PATH).href;
@@ -35,15 +35,26 @@ function displayError(error, mode) {
     : 'Could not create the encrypted PNG. Check that your source file is available and no larger than 16 MiB, then try another destination.';
 }
 
-function processFile(mode, inputPath, password, outputPath) {
+function processFile(mode, inputPath, password, outputPath, chooseDestination, appearance = 'glitch') {
   return new Promise((resolve, reject) => {
     const worker = new Worker(path.join(__dirname, 'worker.cjs'), {
-      workerData: { mode, inputPath, password, outputPath },
+      workerData: { mode, inputPath, password, outputPath, chooseDestination: Boolean(chooseDestination), appearance },
     });
-    let received = false;
-    worker.once('message', (result) => {
+    let received = false, prepared = false, chooserError;
+    worker.on('message', async (result) => {
+      if (result.type === 'prepared' && chooseDestination && !prepared) {
+        prepared = true;
+        let destination = null;
+        try { destination = await chooseDestination(safeFilename(result.name)); }
+        catch (error) { chooserError = error; }
+        // Even if the dialog fails, let the worker clear plaintext before returning.
+        try { worker.postMessage({ type: 'destination', outputPath: destination }); }
+        catch (error) { await worker.terminate(); reject(error); }
+        return;
+      }
       received = true;
-      if (result.ok) resolve();
+      if (chooserError) reject(chooserError);
+      else if (result.ok) resolve(result);
       else reject(Object.assign(new Error(result.message), { code: result.code, isFormatError: result.isFormatError }));
     });
     worker.once('error', reject);
@@ -82,6 +93,8 @@ function registerIpc() {
     if (!validSender(event) || !request || typeof request !== 'object' || !MODES.has(request.mode)) return failure('Invalid request.');
     if (busy) return failure('An operation is already in progress.');
     const mode = request.mode;
+    const appearance = request.appearance ?? 'glitch';
+    if (mode === 'encode' && !['plain', 'glitch'].includes(appearance)) return failure('Choose Plain or Glitch appearance.');
     const inputPath = selections[mode];
     if (!inputPath) return failure('Choose a file first.');
     let password = request.password;
@@ -94,19 +107,31 @@ function registerIpc() {
     request.confirmation = null;
     busy = true;
     try {
-      const result = await dialog.showSaveDialog(window, {
-        title: mode === 'encode' ? 'Save encrypted PNG' : 'Save recovered file',
-        buttonLabel: mode === 'encode' ? 'Encrypt and save' : 'Recover and save',
-        defaultPath: mode === 'encode' ? `${path.basename(inputPath)}.encrypted.png` : 'recovered-file.bin',
-        filters: mode === 'encode' ? [{ name: 'PNG images', extensions: ['png'] }] : [{ name: 'All files', extensions: ['*'] }],
-        properties: ['showOverwriteConfirmation'],
-      });
-      if (result.canceled || !result.filePath) return { ok: true, canceled: true };
-      if (path.resolve(inputPath) === path.resolve(result.filePath)) return failure('Choose a different filename. Your original file is never replaced.');
-      const operation = processFile(mode, inputPath, password, result.filePath);
+      let outputPath;
+      const chooseDestination = async (name) => {
+        const result = await dialog.showSaveDialog(window, {
+          title: mode === 'encode' ? 'Save encrypted PNG' : 'Save recovered file',
+          buttonLabel: mode === 'encode' ? 'Encrypt and save' : 'Save recovered file',
+          defaultPath: name,
+          filters: mode === 'encode' ? [{ name: 'PNG images', extensions: ['png'] }] : [{ name: 'All files', extensions: ['*'] }],
+          properties: ['showOverwriteConfirmation'],
+        });
+        if (result.canceled || !result.filePath) return null;
+        if (path.resolve(inputPath) === path.resolve(result.filePath)) throw Object.assign(new Error('Choose a different filename. Your original file is never replaced.'), { isFormatError: true });
+        outputPath = result.filePath;
+        return outputPath;
+      };
+      let operation;
+      if (mode === 'decode') {
+        operation = processFile(mode, inputPath, password, undefined, chooseDestination);
+      } else {
+        if (!await chooseDestination(`${path.basename(inputPath)}.encrypted.png`)) return { ok: true, canceled: true };
+        operation = processFile(mode, inputPath, password, outputPath, undefined, appearance);
+      }
       password = null;
-      await operation;
-      return { ok: true, savedName: path.basename(result.filePath), mode };
+      const result = await operation;
+      if (result.canceled) return { ok: true, canceled: true };
+      return { ok: true, savedName: path.basename(outputPath), mode };
     } catch (error) {
       return failure(displayError(error, mode));
     } finally {
