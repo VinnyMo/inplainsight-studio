@@ -4,7 +4,7 @@ This experimental `.deb` targets **Ubuntu 24.04 or later, Intel/AMD 64-bit (amd6
 
 ## Install and open
 
-1. Download `inplainsight-studio_0.1.0~experimental.1_amd64.deb` to Downloads.
+1. Download `inplainsight-studio_0.1.0~experimental.2_amd64.deb` to Downloads.
 2. Open it with your graphical Debian-package installer and choose Install. Authenticate using Ubuntu's own system dialog. If double-clicking opens Archive Manager, use **Open With** and choose a package installer such as GDebi or Software Install. Availability depends on your desktop; some App Center versions cannot install local `.deb` files. Do not extract and run the archive.
 3. Open **InPlainSight Studio** from the applications menu.
 
@@ -12,12 +12,18 @@ The package manager may need internet access to install missing Ubuntu system li
 
 **Security permission:** the package adds `/etc/apparmor.d/inplainsight-studio`, attached only to `/opt/inplainsight-studio/inplainsight-studio`. Its `flags=(unconfined)` profile grants `userns,` so Chromium can create the user namespaces required for its sandbox under Ubuntu's default restrictions. This is an application-specific compatibility allowance, not additional AppArmor confinement. Electron's renderer sandbox remains on. No global sysctl/security setting is changed and no setuid executable is installed. Installation fails visibly if an active AppArmor policy cannot be loaded. Do not disable the sandbox or system protection to work around launch errors.
 
+## Upgrade from experimental.1
+
+Quit the app, keep backups of your files and encrypted PNGs, and install the experimental.2 package with the same package installer. Debian orders `0.1.0~experimental.2` after `0.1.0~experimental.1`, so it upgrades the existing package in place. The package name and install paths are unchanged. The upgrade keeps the existing AppArmor profile active until the new package reloads that same application-specific profile; it does not change global security settings or touch your saved files.
+
+This version adds a quieter interface, restored original filename suggestions for newly created PNGs, and reversible Plain and Glitch carrier styles. Legacy Plain PNGs remain recoverable, and the Plain carrier format is unchanged. Use this version to recover Glitch PNGs and to receive the restored filename suggestions. A native Ubuntu upgrade and launch still need the desktop test below.
+
 ## A safe first test
 
 Use a disposable, non-sensitive file smaller than 16 MiB, and keep its original.
 
-- Create PNG: select the file, enter and confirm a long passphrase, and save to a new filename
-- Recover file: choose that original PNG and passphrase, then save to a different filename; compare its contents with the original
+- Create PNG: select the file, enter and confirm a long passphrase, and save to a new filename; repeat once with Plain and once with Glitch
+- Recover file: choose each original PNG and passphrase, check its suggested original filename, then save to a different filename; compare its contents with the original
 - Try a wrong password: recovery must fail without producing a recovered file
 - Try Cancel and repeat an operation; close and reopen the app from its menu entry
 - Keep the encrypted PNG unchanged. A lost password cannot be recovered

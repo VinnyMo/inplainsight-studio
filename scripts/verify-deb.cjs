@@ -17,7 +17,7 @@ async function main() {
     const control = read('DEBIAN/control');
     assert.match(control, /^Architecture: amd64$/m);
     assert.match(control, /^Depends: apparmor \(>= 4.0\),/m);
-    assert.match(control, /^Version: 0\.1\.0~experimental\.1$/m);
+    assert.equal(control.match(/^Version: (.+)$/m)?.[1], pkg.version.replace('-', '~'));
     const install = 'opt/inplainsight-studio';
     const app = `${install}/resources/app`;
     const fuses = await getCurrentFuseWire(path.join(tmp, install, pkg.name));

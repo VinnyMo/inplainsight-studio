@@ -1,8 +1,8 @@
-# Experimental PNG container v1
+# Experimental PNG carriers and encrypted envelope v1
 
 This is a provisional format, not a published security standard. All integers are unsigned big-endian. Numeric limits are checked before expensive derivation/decompression. Implementations must reject unknown versions/profiles rather than guess.
 
-## Carrier
+## Plain carrier v1
 
 A non-interlaced 8-bit RGB PNG, width 1024. Only IHDR, one nonempty IDAT, and IEND chunks are accepted, with CRC validation and no trailing bytes. Dimensions are bounded before decompression. Native zlib enforces the exact expected scanline output length and complete compressed input consumption before pngjs pixel decoding. The decoded pixel byte sequence is:
 
@@ -11,6 +11,18 @@ A non-interlaced 8-bit RGB PNG, width 1024. Only IHDR, one nonempty IDAT, and IE
 3. Zero padding to the end of the final row
 
 Height must be the smallest positive height accommodating those bytes. Padding must be zero. The outer length equals the authenticated envelope length below. No payload is stored in metadata/ancillary chunks. Pixel-equivalent PNG rewrites with extra ancillary chunks are intentionally unsupported by this narrow prototype parser.
+
+## Glitch carrier v2 (transform profile 1)
+
+The PNG chunk/profile restrictions above also apply. Its decoded RGB channel bytes start with a 48-byte header: ASCII `IPSPNG02` at 0–7, carrier version 2 at 8, transform profile 1 at 9, zero reserved bytes at 10–11, envelope length at 12–15, and SHA-256 of the complete encrypted envelope at 16–47. This digest is a public corruption check, not keyed authentication. The inner envelope and its authenticated encryption remain v1.
+
+After the header, each three envelope bytes a,b,c produce four six-bit symbols: `a >> 2`, `((a & 3) << 4) | (b >> 4)`, `((b & 15) << 2) | (c >> 6)`, `c & 63`. Missing bytes in the final triplet are zero. Symbols occupy the low six bits of successive RGB channels; high two bits carry deterministic artwork. All unused tail bits and remaining canvas low bits must be zero. Height is exactly `max(256, ceil((48 + 4 * ceil(length / 3)) / 3072))`. This adds approximately 33% payload pixels; minimum canvas and PNG compression mean final file-size overhead varies.
+
+Artwork is defined by `artPixel`, `mix`, `PALETTE` and `applyArtwork` in `src/core.cjs`, with a regression golden vector in `test/glitch.test.cjs`. Treat these profile-1 constants and integer operations as wire-format constants. The first four digest bytes seed a public 32-bit mixer. Six quantized palettes, 16-pixel horizontal bands, displaced block boundaries, and thin dark lines determine the upper channel bits. Every high bit is validated during decoding. Changes to this generator require a new transform profile; it is not encryption or error correction.
+
+Unknown profiles/versions, noncanonical dimensions/header/padding/artwork, digest mismatches and a mismatched inner envelope length are rejected. Recovery dispatches by the distinct pixel magic and still accepts Plain v1. Only the normal secretstream decryptor can authenticate and release plaintext; a recalculated checksum/artwork cannot bypass it.
+
+The shared pre-inflation ceiling is 7,463,936 pixels (1024 × 7289), or 22,399,097 scanline bytes. Compressed input and output remain limited to 24 MiB. No encrypted data is carried in PNG ancillary metadata or alpha channels. Plain and Glitch both require the original unmodified lossless PNG.
 
 ## Envelope header (54 bytes)
 
