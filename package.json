@@ -1,0 +1,22 @@
+{
+  "name": "inplainsight-studio",
+  "version": "0.1.0-experimental",
+  "private": true,
+  "description": "Experimental offline encrypted PNG desktop prototype",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "check": "node --check src/core.cjs && node --check src/main.cjs && node --check src/preload.cjs && node --check src/renderer.js && node --check src/worker.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "libsodium-wrappers-sumo": "0.8.4",
+    "pngjs": "7.0.0"
+  },
+  "devDependencies": {
+    "electron": "44.5.1"
+  }
+}
