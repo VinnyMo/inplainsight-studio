@@ -1,8 +1,10 @@
 # InPlainSight Studio
 
-Experimental, offline file-to-PNG encryption and recovery desktop prototype. **Not security-audited. Do not trust this early prototype as your only copy of important files.**
+Experimental, offline file-to-PNG/WAV/FLAC encryption and recovery desktop prototype. **Not security-audited. Do not trust this early prototype as your only copy of important files.**
 
-A file and password become a self-contained PNG. The actual encrypted bytes live in its RGB pixels. Recovery requires the original PNG and the password, not a database, account, server, sidecar, or expiry service. Choose Plain noise or colored Glitch bands: this is an encrypted image container, not covert steganography.
+A file and password become a self-contained PNG or lossless audio carrier. Encrypted bytes live in PNG pixels or audio samples, with no database, account, server or required sidecar. PNG offers Plain noise or reversible Glitch artwork. WAV and FLAC contain noise audio and are never played automatically. These are encrypted containers, not covert steganography.
+
+The current development checkpoint adds editable output filenames, Glitch profile 3, a source-first format chooser, streaming WAV/FLAC recovery and clearer capacity summaries. See [development status and release gates](docs/DEVELOPMENT-STATUS.md). This source checkpoint is **not a new release**.
 
 ## Ubuntu installer
 
@@ -22,19 +24,21 @@ npm start
 
 On Linux, Electron needs a graphical desktop and its system libraries. Do not disable Electron's sandbox to work around a host setup problem. The app makes no network requests; installation downloads dependencies.
 
-Choose **Encrypt a file**, pick a file and a Plain or Glitch appearance, enter and confirm a strong password, and choose a new output filename. To recover, choose **Recover a file**, select the generated PNG, provide the password, and select a new output filename. Original files are not deleted or overwritten. After verifying the PNG and password, recovery suggests the original filename and extension. The suggestion is sanitized for safety; you can change the name and destination.
+Choose **Encrypt a file**, select a source, then select PNG, WAV or available FLAC. Set a password and optional output filename before choosing a new destination. Recovery identifies the carrier from its contents and authenticates it before asking where to save the recovered file. Existing files are never overwritten. Filenames are sanitized; explicit recovery names may retain a user-selected extension.
+
+FLAC in this development build requires a separately installed FFmpeg with an s16 FLAC encoder, discovered through an absolute `IPS_FFMPEG` path or absolute PATH entries. PNG and WAV do not require FFmpeg. This is a temporary development dependency: **a release must include appropriate codec support and work without users installing FFmpeg**. Codec redistribution/licensing and platform packaging are not resolved; no binary is bundled here.
 
 ## Current boundaries
 
-- 16 MiB input file limit, 24 MiB encoded PNG input limit
-- Whole-file buffering and bounded PNG decoding; not a large-file streaming implementation
-- Plain exports retain the v1 carrier; Glitch uses carrier v2 with about 33% more payload pixels and a 256-row minimum canvas. Recovery detects both automatically.
-- Fixed 1024-pixel-wide RGB PNG profile; arbitrary image formats and PNG editors are unsupported
-- Any file type can be encrypted; video carrier encoding is a separate future discussion
-- No cloud service, password reset, telemetry, account, expiration, or remote access revocation
-- No signed releases, independent security audit, or production-security claim
+- Original files: **16 MiB maximum** for PNG, WAV and FLAC. Larger design budgets are targets, not supported capacity.
+- Encoded input/output ceilings: PNG 36 MiB; WAV 33,587,244 bytes; FLAC 36 MiB.
+- PNG still uses whole-file buffering. Plain v1 and Glitch transform profiles 1, 2 and 3 recover; new Glitch exports use profile 3. Fixed 1024-pixel RGB profile.
+- WAV uses bounded streaming around the existing authenticated envelope; FLAC compresses and verifies that same PCM carrier. See [WAV](docs/WAV.md) and [FLAC](docs/FLAC.md).
+- Audio cancellation is cooperative, with owned staging cleanup and exclusive verified publication. Abrupt power loss/forced kill can leave stages, including authenticated plaintext during recovery writing; no crash sweeper or secure-erasure claim.
+- JPEG is unsupported. The [MP4 proof of concept](experimental/mp4-poc/README.md) is isolated CLI/test code, capped at 64 KiB original and absent from the GUI. Generated media is not committed.
+- No cloud service, password reset, telemetry, account, expiry or remote revocation. No signed release, independent audit or production-security claim.
 
-**Keep the PNG unchanged.** Resizing, screenshots, JPEG conversion, filters, or services that rewrite images may permanently destroy the data. Transfer it as an original file. Use a long unique passphrase; a lost password cannot be recovered. Keep backups of your original files.
+**Keep the exported file unchanged so it can be recovered.** Image edits, resizing or screenshots can prevent recovery. Audio exports contain noise: avoid high playback volume. Studio never plays audio. Recovery after conversion is not generally verified. Transfer original files and keep backups; a lost password cannot be reset.
 
 ## Security design
 

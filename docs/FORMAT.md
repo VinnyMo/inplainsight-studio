@@ -12,7 +12,7 @@ A non-interlaced 8-bit RGB PNG, width 1024. Only IHDR, one nonempty IDAT, and IE
 
 Height must be the smallest positive height accommodating those bytes. Padding must be zero. The outer length equals the authenticated envelope length below. No payload is stored in metadata/ancillary chunks. Pixel-equivalent PNG rewrites with extra ancillary chunks are intentionally unsupported by this narrow prototype parser.
 
-## Glitch carrier v2 (transform profile 1)
+## Legacy Glitch carrier v2 (transform profile 1)
 
 The PNG chunk/profile restrictions above also apply. Its decoded RGB channel bytes start with a 48-byte header: ASCII `IPSPNG02` at 0–7, carrier version 2 at 8, transform profile 1 at 9, zero reserved bytes at 10–11, envelope length at 12–15, and SHA-256 of the complete encrypted envelope at 16–47. This digest is a public corruption check, not keyed authentication. The inner envelope and its authenticated encryption remain v1.
 
@@ -22,7 +22,27 @@ Artwork is defined by `artPixel`, `mix`, `PALETTE` and `applyArtwork` in `src/co
 
 Unknown profiles/versions, noncanonical dimensions/header/padding/artwork, digest mismatches and a mismatched inner envelope length are rejected. Recovery dispatches by the distinct pixel magic and still accepts Plain v1. Only the normal secretstream decryptor can authenticate and release plaintext; a recalculated checksum/artwork cannot bypass it.
 
-The shared pre-inflation ceiling is 7,463,936 pixels (1024 × 7289), or 22,399,097 scanline bytes. Compressed input and output remain limited to 24 MiB. No encrypted data is carried in PNG ancillary metadata or alpha channels. Plain and Glitch both require the original unmodified lossless PNG.
+## Legacy Glitch carrier v2 (transform profile 2)
+
+Profile-2 exports use the same 48-byte header but set byte 9 to 2. Each envelope byte produces two symbols, high nibble first then low nibble, in successive RGB channels beginning at byte 48. The low four bits carry the encrypted envelope; the high four bits carry canonical artwork. Height is exactly `max(768, 16 * ceil((48 + 2 * length) / (3072 * 16)))`, width 1024. There are no partial symbols. Raw payload RGB storage is approximately twice the envelope size; the minimum canvas and PNG compression determine actual file overhead.
+
+`src/glitch-art.cjs` is the normative integer-only profile-2 generator, including all constants, operation order, integer rounding and public mixers. Its regression golden pixel vector is in `test/glitch2.test.cjs`. The digest seeds coherent abstract grayscale texture, a few partial-row fault origins, whole-16×16-MCU displacement, muted chroma/DC offsets, localized noisy fault blocks, and neutral-gray decode tails. Seeded 768-row panels vary between repeated block columns and scanline smearing. The final panel may be partial. No recognizable source photograph or plaintext-derived artwork is used.
+
+After `48 + 2 * length`, low nibbles are canonical public grain derived from the digest and pixel position, not zero padding and not additional payload. Every upper nibble and every padding nibble is verified after envelope extraction and digest checking. Header bytes remain exact visible RGB bytes, unaffected by artwork. A restyled or rewritten carrier is not accepted. Ciphertext resides only in RGB channel nibbles; no payload is carried in alpha, metadata, ancillary chunks or trailing bytes. This is an openly identifiable encrypted container, not an invisibility claim.
+
+Profile 1's generator, height and zero-padding rules remain unchanged. The encoder's optional third argument can explicitly generate profile 1 or 2 for compatibility fixtures; the desktop's single Glitch choice now generates profile 3. Unknown profiles are rejected, never guessed. The inner authenticated envelope, KDF, and secretstream protocol remain v1.
+
+## Current Glitch carrier v2 (transform profile 3)
+
+Profile 3 sets header byte 9 to 3 and retains profile 2's nibble packing, canonical dimensions, 768-row minimum and resource bounds. The normative generator is `src/glitch-art3.cjs`; all constants, operation order and integer rounding are wire-format rules. The full 32-byte envelope digest and panel index derive a deterministic composition seed, separate from legacy generators. No additional random field or plaintext-derived artwork is introduced.
+
+Each panel selects 2–5 ordered faults with varied locations, signed 3–23-block displacement and muted chroma offsets. Seed-derived parameters choose coarse texture scale/contrast, tile or smear treatment, repeat-strip placement/width/source/period, smear placement/height, and localized 3–15-block noisy bursts. Gray tails begin within block rows 29–46 with varied neutral intensity; one fifth of parameter choices omit the tail. The width, panel size and 16x16 block grid remain fixed. These choices diversify appearance but do not conceal the public container header or provide secrecy.
+
+High channel nibbles and unused low-nibble grain are regenerated and checked exactly. Profile 1 and 2 generation and decoding remain unchanged; changing an existing file's profile byte cannot convert its artwork. Older readers reject profile 3 rather than recover it; new readers continue to accept Plain v1 and both older Glitch profiles. Future changes to canonical profile-3 artwork require another transform profile. The inner encrypted envelope, KDF and secretstream protocol remain v1.
+
+## Shared resource limits
+
+The pre-inflation ceiling is 11,206,656 pixels (1024 × 10944), or 33,630,912 scanline bytes. It derives from the maximum allowed envelope of 16,793,600 bytes and profile-2 height. Compressed input and output are limited to 36 MiB, with exact decompressed length and complete compressed input consumption required. Smaller per-profile canonical dimensions are checked after decoding. The ceiling is a parser bound, not a promise that memory use equals file size; synchronous PNG parsing and whole-file verification allocate multiple buffers. Plain and both Glitch profiles require the original unmodified lossless PNG.
 
 ## Envelope header (54 bytes)
 

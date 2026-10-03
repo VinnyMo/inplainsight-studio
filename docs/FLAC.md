@@ -1,0 +1,27 @@
+# Local experimental FLAC carrier
+
+FLAC uses the existing installed FFmpeg as a separate child process. No binary, dependency download or automatic installation is included. The current machine has Gyan FFmpeg 9.0, with FLAC s16 encoding and GPLv3-or-later license output (`--enable-gpl --enable-version3`). This is a local test dependency, not a resolved release packaging or redistribution plan. PNG and WAV do not require FFmpeg. FFmpeg licensing depends on build configuration: https://ffmpeg.org/legal.html . Future release work must choose supported codec builds/platforms and resolve applicable license/source/notice/package obligations before distributing binaries; this prototype does not decide that question.
+
+Discovery uses an absolute IPS_FFMPEG executable path if explicitly configured, otherwise absolute entries on PATH. Relative executable paths are rejected. Main-process capability probing confirms a FLAC encoder with s16 support; the renderer receives only availability/reason, never an executable path control. FLAC stays disabled with an accessible dependency explanation if unavailable. Restart Studio after changing the installation/PATH. Execution uses shell:false, argument arrays, hidden child windows, no user-supplied media flags, fixed local paths, one codec thread and a file/pipe protocol whitelist.
+
+## Payload and format
+
+Source input remains <=16 MiB. FLAC files are capped at 36 MiB; the future 1/4 GB design budgets remain inactive. No encryption/profile change: FLAC losslessly compresses the exact verified WAV carrier PCM, containing the existing authenticated IPSSTUD1 envelope. There is no metadata payload or sidecar. Standard mono 48 kHz, 16-bit samples are used, with compression level 5 and explicit 4096-sample blocks. Small final blocks are allowed. Samples retain WAV's noise-amplitude mapping; never autoplay. Compression exploits the representation's unused bits, not compressibility of the original encrypted content.
+
+Before native decoding, the bounded parser requires fLaC + 34-byte STREAMINFO, 48 kHz, mono, 16-bit, known sample count 96..16,793,600, nonzero PCM MD5 and both declared block-size bounds equal to 4096. It permits only bounded padding/comment blocks beyond STREAMINFO, at most eight metadata blocks and 64 KiB total metadata. This intentionally supports a narrow profile, not every valid FLAC variant.
+
+Decoded PCM is streamed through stdout, bounded to exactly 2 * declared samples, checked against STREAMINFO MD5, wrapped in the canonical WAV header and then handled by the proven WAV recovery pipeline. FFmpeg decoding uses xerror and CRC/explode error detection; any error-level stderr also causes refusal. Neither MD5 nor FLAC CRC is the security boundary: authenticated envelope lengths, tags, FINAL and plaintext hash verification remain decisive. Container metadata itself is not authenticated; successfully preserved samples may be recoverable after some lossless repackaging, but such conversion compatibility is not promised or broadly tested. Only original exported files are covered by the current end-to-end checks.
+
+## Publication, bounds and cancellation
+
+Export first creates a verified WAV in an owned stage, encodes FLAC, decodes that staged FLAC and byte-hash-compares the canonical WAVs before exclusive hard-link publication. Recovery pins an input copy in an owned stage before invoking FFmpeg, decodes it, then reuses full WAV authentication before the Save chooser and the second verified streaming plaintext write. Existing paths are never overwritten. Filenames/suffixes follow current sanitization behavior and recovery detects FLAC by signature, not extension.
+
+Each native child has a 60-second deadline, 25 ms cancellation polling, 16 MiB per-allocation limit, and bounded stderr capture. The allocation flag is not a whole-process RSS cap or a security sandbox. Decode stdout has backpressure; actual sample bytes cannot exceed the declared/bounded amount. Encoding has a 36 MiB output target plus polling/final stat checks; a small staged overshoot is possible. Full output verification prevents publishing a size-truncated file. Children are killed and awaited during cancellation/failure before cleanup.
+
+Scratch is higher than WAV: during final export verification about two WAV-sized stages plus FLAC; during recovery input FLAC + decoded WAV + envelope spool + staged plaintext. The first nested WAV export also briefly uses its existing ~4E scratch. No free-space reservation is implemented. Normal failures/cancellation remove owned stages; abrupt crash/forced kill/power loss can leave stages, including verified plaintext during recovery publication. Windows ACLs are inherited; no secure-erasure or crash-sweeper claim. Synchronous KDF cancellation is still deferred until the next bounded step, and a completed publication can win a late cancellation race.
+
+## Format-summary copy
+
+PNG/WAV/FLAC summaries use the same order: Estimated output size, Duration (audio only), Maximum source size, then format-specific warning. Unsupported/dependency/oversize reasons remain accessible through focus, hover and click/tap. The preservation text refers to the exported file. Estimates retain uncertainty, and codec details/encoded ceilings/future budgets are in Details. Future budgets do not enable a format or lift caps.
+
+Format reference: Xiph FLAC specification overview and RFC links https://xiph.org/flac/format.html . Tests include independently decoded PCM and whole-envelope authentication; no audio playback is needed.

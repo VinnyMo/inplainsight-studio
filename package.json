@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
-    "check": "node --check src/core.cjs && node --check src/main.cjs && node --check src/preload.cjs && node --check src/renderer.js && node --check src/worker.cjs && node --check scripts/build-deb.cjs && node --check scripts/verify-deb.cjs",
+    "check": "node --check src/flac.cjs && node --check src/media-tools.cjs && node --check src/wav.cjs && node --check src/stream-envelope.cjs && node --check src/preflight.js && node --check src/core.cjs && node --check src/glitch-art.cjs && node --check src/glitch-art3.cjs && node --check src/window-bounds.cjs && node --check src/main.cjs && node --check src/preload.cjs && node --check src/renderer.js && node --check src/worker.cjs && node --check scripts/build-deb.cjs && node --check scripts/verify-deb.cjs",
     "package:deb": "node scripts/build-deb.cjs",
     "verify:deb": "node scripts/verify-deb.cjs",
     "setup:electron": "node node_modules/electron/install.js"

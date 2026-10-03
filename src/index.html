@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>InPlainSight Studio</title>
   <link rel="stylesheet" href="style.css">
+  <script src="preflight.js" defer></script>
   <script src="renderer.js" defer></script>
 </head>
 <body>
@@ -17,7 +18,7 @@
     <main>
       <section class="introduction" aria-labelledby="page-title">
         <h1 id="page-title">Encrypt or recover a file</h1>
-        <p class="lead">Create an encrypted PNG, or recover the original file with its password.</p>
+        <p class="lead">Create an encrypted PNG, WAV or FLAC, or recover the original file with its password.</p>
       </section>
 
       <section class="workspace" aria-label="File encryption studio">
@@ -27,28 +28,49 @@
         </div>
 
         <form id="operation-panel" role="tabpanel" aria-labelledby="encode-tab" novalidate>
-          <div class="step-heading"><span class="step-number">01</span><h2 id="file-heading">Choose your source file</h2><span id="file-limit" class="step-note">Any file · max 16 MiB</span></div>
+          <div class="step-heading"><span class="step-number">01</span><h2 id="file-heading">Choose your source file</h2><span id="file-limit" class="step-note">Any regular file</span></div>
           <button type="button" id="choose-file" class="file-picker">
             <span class="file-icon" aria-hidden="true">+</span>
             <span class="file-copy"><strong id="file-name">Choose a file</strong><span id="file-detail">Your original stays untouched</span></span>
             <span id="browse-label" class="browse-label">Browse files <span aria-hidden="true">→</span></span>
           </button>
 
-          <div class="field appearance-field" id="appearance-field"><label for="appearance">PNG appearance</label><select id="appearance"><option value="glitch" selected>Glitch</option><option value="plain">Plain</option></select></div>
-
-          <div class="step-heading password-heading"><span class="step-number">02</span><h2 id="password-heading">Set a strong password</h2></div>
+          <section id="format-field" hidden aria-labelledby="format-heading">
+            <div class="step-heading format-heading"><span class="step-number">02</span><h2 id="format-heading">Choose output format</h2><button type="button" id="reset-source" class="text-button">Clear source</button></div>
+            <div class="carrier-options" role="group" aria-label="Output format">
+              <button type="button" id="carrier-png" aria-pressed="false" aria-describedby="format-reason">PNG</button>
+              <button type="button" id="carrier-jpeg" aria-pressed="false" aria-describedby="format-reason">JPEG</button>
+              <button type="button" id="carrier-wav" aria-pressed="false" aria-describedby="format-reason">WAV</button>
+              <button type="button" id="carrier-flac" aria-pressed="false" aria-describedby="format-reason">FLAC</button>
+              <button type="button" id="carrier-video" aria-pressed="false" aria-describedby="format-reason">Video</button>
+            </div>
+            <p id="format-reason" class="field-hint" role="status" aria-live="polite"></p>
+            <p id="format-estimate" class="field-hint" aria-live="polite"></p>
+            <p id="format-duration" class="field-hint"></p>
+            <p id="format-limit" class="field-hint"></p>
+            <p id="format-warning" class="field-hint"></p>
+            <details class="design-budgets"><summary>Format details and planned budgets</summary><p id="format-details"></p><p>Planned output budgets, not current capacity — default / advanced: PNG 100 / 500 MB; JPEG 25 / 100 MB; WAV and FLAC 1 / 4 GB; video 5 / 50 GB. Decimal units. These targets do not enable formats or increase current limits.</p></details>
+          </section>
+          <div id="export-fields" hidden>
+          <div class="step-heading password-heading"><span class="step-number" id="password-step">03</span><h2 id="password-heading">Set a strong password</h2></div>
           <div class="password-fields">
             <div class="field"><label for="password">Password</label><div class="password-input"><input id="password" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="password-help" maxlength="1024" placeholder="At least 12 characters"><button type="button" id="toggle-password" aria-label="Show password" aria-pressed="false">Show</button></div></div>
             <div class="field" id="confirmation-field"><label for="confirmation">Confirm password</label><input id="confirmation" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="1024" placeholder="Enter it again"></div>
           </div>
           <p id="password-help" class="field-hint">Use a password manager or several randomly chosen words. There is no password reset.</p>
 
-          <div class="action-row"><p id="save-hint">You’ll choose where to save next.<br>Existing files are never overwritten.</p><button type="submit" id="submit-button" class="primary-button"><span id="submit-label">Encrypt &amp; save PNG</span><span id="submit-arrow" aria-hidden="true">→</span><span class="spinner" id="spinner" aria-hidden="true" hidden></span></button></div>
+          <div class="output-options">
+            <div class="field output-name-field"><label id="output-name-label" for="output-name">Encrypted filename (optional)</label><input id="output-name" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="1024" aria-describedby="output-name-help" placeholder="Default filename"><p id="output-name-help" class="field-hint">Leave blank to use the default name. PNG extension is added automatically.</p></div>
+            <div class="field appearance-field" id="appearance-field"><label for="appearance">PNG appearance</label><select id="appearance"><option value="glitch" selected>Glitch</option><option value="plain">Plain</option></select></div>
+          </div>
+
+          <div class="action-row"><button type="button" id="cancel-operation" class="text-button" hidden>Cancel audio operation</button><p id="save-hint">You’ll choose where to save next.<br>Existing files are never overwritten.</p><button type="submit" id="submit-button" class="primary-button"><span id="submit-label">Encrypt &amp; save PNG</span><span id="submit-arrow" aria-hidden="true">→</span><span class="spinner" id="spinner" aria-hidden="true" hidden></span></button></div>
+          </div>
           <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" hidden></div>
         </form>
       </section>
 
-      <aside class="warning" aria-labelledby="warning-title"><span class="warning-icon" aria-hidden="true">!</span><div><h2 id="warning-title">Keep the PNG exactly as saved</h2><p>Resizing, editing, screenshots, or image compression can destroy the hidden file. Share it as a file attachment and keep a backup. This experimental prototype has not been independently audited; don’t rely on it for irreplaceable or high-risk data.</p></div></aside>
+      <aside class="warning" aria-labelledby="warning-title"><span class="warning-icon" aria-hidden="true">!</span><div><h2 id="warning-title">Keep the encrypted file exactly as saved</h2><p>Keep the exported file unchanged so it can be recovered. Audio exports contain noise; avoid high playback volume. This app never plays audio. Share it as a file attachment and keep a backup. This experimental prototype has not been independently audited; don’t rely on it for irreplaceable or high-risk data.</p></div></aside>
       <footer>Encryption protects the contents, not the fact that a file is hidden.</footer>
     </main>
   </div>
