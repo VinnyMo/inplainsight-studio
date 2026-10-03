@@ -5,14 +5,17 @@ const sodium = require('libsodium-wrappers-sumo');
 const { PNG } = require('pngjs');
 const zlib = require('node:zlib');
 const { createHash } = require('node:crypto');
+const { applyArtwork2 } = require('./glitch-art.cjs');
+const { applyArtwork3 } = require('./glitch-art3.cjs');
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_ENVELOPE = MAX_FILE_BYTES + 16384;
-const MAX_PNG_BYTES = 24 * 1024 * 1024;
+const MAX_PNG_BYTES = 36 * 1024 * 1024;
 const CHUNK = 65536, WIDTH = 1024, HEADER = 54;
 const MAGIC = Buffer.from('IPSSTUD1');
 const CARRIER_MAGIC = Buffer.from('IPSPNG02'), CARRIER_HEADER = 48, MIN_GLITCH_HEIGHT = 256;
 const glitchHeight = (length) => Math.max(MIN_GLITCH_HEIGHT, Math.ceil((CARRIER_HEADER + 4 * Math.ceil(length / 3)) / (WIDTH * 3)));
-const MAX_PIXELS = WIDTH * glitchHeight(MAX_ENVELOPE);
+const glitchHeight2 = length => Math.max(768, 16 * Math.ceil((CARRIER_HEADER + 2 * length) / (WIDTH * 3 * 16)));
+const MAX_PIXELS = WIDTH * glitchHeight2(MAX_ENVELOPE);
 const digestOf = (bytes) => createHash('sha256').update(bytes).digest();
 // Public, deterministic artwork only. This mixer is not a cryptographic primitive.
 function mix(value) {
@@ -139,28 +142,46 @@ async function decryptBytes(envelope, password) {
     return { data: Buffer.concat(chunks), name: meta.name };
   } finally { disposeState(state); sodium.memzero(key); for (const chunk of chunks) chunk.fill(0); }
 }
-function envelopeToPng(envelope, appearance = 'glitch') {
-  if (!Buffer.isBuffer(envelope) || envelope.length < HEADER + 42 || envelope.length > MAX_ENVELOPE || !['plain', 'glitch'].includes(appearance)) fail();
-  const height = appearance === 'plain' ? Math.ceil((envelope.length + 4) / (WIDTH * 3)) : glitchHeight(envelope.length);
+function envelopeToPng(envelope, appearance = 'glitch', profile = 3) {
+  if (!Buffer.isBuffer(envelope) || envelope.length < HEADER + 42 || envelope.length > MAX_ENVELOPE || !['plain', 'glitch'].includes(appearance) || ![1, 2, 3].includes(profile)) fail();
+  const height = appearance === 'plain' ? Math.ceil((envelope.length + 4) / (WIDTH * 3)) : (profile === 1 ? glitchHeight(envelope.length) : glitchHeight2(envelope.length));
   const rgb = Buffer.alloc(WIDTH * height * 3);
   if (appearance === 'plain') {
     rgb.writeUInt32BE(envelope.length); envelope.copy(rgb, 4);
   } else {
     const digest = digestOf(envelope);
-    CARRIER_MAGIC.copy(rgb); rgb[8] = 2; rgb[9] = 1;
+    CARRIER_MAGIC.copy(rgb); rgb[8] = 2; rgb[9] = profile;
     rgb.writeUInt32BE(envelope.length, 12); digest.copy(rgb, 16);
+    if (profile === 1) {
     for (let p = 0, q = CARRIER_HEADER; p < envelope.length; p += 3, q += 4) {
       const a = envelope[p], b = envelope[p + 1] || 0, c = envelope[p + 2] || 0;
       rgb[q] = a >>> 2; rgb[q + 1] = ((a & 3) << 4) | (b >>> 4);
       rgb[q + 2] = ((b & 15) << 2) | (c >>> 6); rgb[q + 3] = c & 63;
     }
     applyArtwork(rgb, digest);
+    } else {
+      for (let p = 0; p < envelope.length; p++) { rgb[CARRIER_HEADER + p * 2] = envelope[p] >>> 4; rgb[CARRIER_HEADER + p * 2 + 1] = envelope[p] & 15; }
+      (profile === 2 ? applyArtwork2 : applyArtwork3)(rgb, digest, envelope.length);
+    }
   }
   const png = PNG.sync.write({ width: WIDTH, height, data: rgb }, { colorType: 2, inputColorType: 2, inputHasAlpha: false, bitDepth: 8 });
   if (png.length > MAX_PNG_BYTES) fail('Encoded PNG exceeds the prototype limit');
   return png;
 }
+function glitch2ToEnvelope(rgb, height) {
+  if (rgb[8] !== 2 || ![2, 3].includes(rgb[9]) || rgb[10] !== 0 || rgb[11] !== 0) fail();
+  const length = rgb.readUInt32BE(12);
+  if (length < HEADER + 42 || length > MAX_ENVELOPE || glitchHeight2(length) !== height || CARRIER_HEADER + 2 * length > rgb.length) fail();
+  const envelope = Buffer.alloc(length);
+  for (let p = 0; p < length; p++) envelope[p] = ((rgb[CARRIER_HEADER + 2 * p] & 15) << 4) | (rgb[CARRIER_HEADER + 2 * p + 1] & 15);
+  const digest = digestOf(envelope);
+  const artwork = rgb[9] === 2 ? applyArtwork2 : applyArtwork3;
+  if (!digest.equals(rgb.subarray(16, 48)) || !artwork(rgb, digest, length, true)) fail();
+  if (!envelope.subarray(0, 8).equals(MAGIC) || envelope[8] !== 1 || envelope[9] !== 1 || envelope.readUInt32BE(10) !== length) fail();
+  return envelope;
+}
 function glitchToEnvelope(rgb, height) {
+  if (rgb[9] === 2 || rgb[9] === 3) return glitch2ToEnvelope(rgb, height);
   if (rgb[8] !== 2 || rgb[9] !== 1 || rgb[10] !== 0 || rgb[11] !== 0) fail();
   const length = rgb.readUInt32BE(12);
   if (length < HEADER + 42 || length > MAX_ENVELOPE || glitchHeight(length) !== height) fail();

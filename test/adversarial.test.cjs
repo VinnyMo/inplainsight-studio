@@ -45,7 +45,7 @@ test('PNG rejects IDAT floods, excess inflation and compressed trailing bytes wi
   ];
   for(const p of variants) assert.throws(()=>c.pngToEnvelope(p),c.FormatError);
 });
-test('failed plaintext writes and fsync leave no final or temporary file; existing symlink is unchanged',async()=>{
+test('failed plaintext writes and fsync leave no final or temporary file',async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'ips-adversarial-'));
   const realOpen=fs.open;
   try {
@@ -56,11 +56,44 @@ test('failed plaintext writes and fsync leave no final or temporary file; existi
       try { await assert.rejects(c.decodeFile(png,PASS,out),new RegExp('injected '+failure)); } finally {fs.open=realOpen;}
       assert.deepEqual(await fs.readdir(dir),['in.png']);
     }
-    const target=path.join(dir,'target'); await fs.writeFile(target,'untouched'); await fs.symlink(target,out);
+  } finally {fs.open=realOpen; await fs.rm(dir,{recursive:true,force:true});}
+});
+
+test('existing symlink is unchanged',async(t)=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'ips-symlink-'));
+  try {
+    const png=path.join(dir,'in.png'),out=path.join(dir,'out.bin'),target=path.join(dir,'target');
+    await fs.writeFile(target,'untouched');
+    try { await fs.symlink(target,out); }
+    catch(error) {
+      if(process.platform==='win32' && error.code==='EPERM') {
+        t.skip('Windows account lacks file-symlink privilege; no security settings changed');
+        return;
+      }
+      throw error;
+    }
+    await fs.writeFile(png,c.envelopeToPng(await c.encryptBytes(Buffer.from('synthetic secret'),PASS)));
     await assert.rejects(c.decodeFile(png,PASS,out),{code:'EEXIST'});
     assert.equal(await fs.readFile(target,'utf8'),'untouched'); assert.equal(await fs.readlink(out),target);
     assert.deepEqual((await fs.readdir(dir)).sort(),['in.png','out.bin','target']);
-  } finally {fs.open=realOpen; await fs.rm(dir,{recursive:true,force:true});}
+  } finally {await fs.rm(dir,{recursive:true,force:true});}
+});
+
+test('Windows case-insensitive destination collisions never overwrite existing data',{skip:process.platform!=='win32'},async(t)=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'ips-case-collision-'));
+  try {
+    const png=path.join(dir,'in.png'),existing=path.join(dir,'Existing.txt'),alias=path.join(dir,'EXISTING.TXT');
+    await fs.writeFile(existing,'untouched');
+    try { await fs.stat(alias); }
+    catch(error) {
+      if(error.code==='ENOENT') { t.skip('Test directory uses a case-sensitive filesystem'); return; }
+      throw error;
+    }
+    await fs.writeFile(png,c.envelopeToPng(await c.encryptBytes(Buffer.from('synthetic secret'),PASS)));
+    await assert.rejects(c.decodeFile(png,PASS,alias),{code:'EEXIST'});
+    assert.equal(await fs.readFile(existing,'utf8'),'untouched');
+    assert.deepEqual((await fs.readdir(dir)).sort(),['Existing.txt','in.png']);
+  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 test('secretstream state is zeroed before free and duplicate pull buffers are cleared',async()=>{
   await sodium.ready;

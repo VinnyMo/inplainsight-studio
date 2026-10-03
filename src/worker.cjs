@@ -2,12 +2,18 @@
 
 const { parentPort, workerData } = require('node:worker_threads');
 const { encodeFile, decodeFile, FormatError } = require('./core.cjs');
+const wav = require('./wav.cjs');
+const flac = require('./flac.cjs');
 
 (async () => {
   let password = workerData.password;
   workerData.password = null;
   try {
-    const operation = workerData.mode === 'encode' ? encodeFile : decodeFile;
+    const carrier = workerData.mode === 'encode' ? (workerData.carrier || 'png') : await flac.detectCarrier(workerData.inputPath);
+    const isAudio = ['wav', 'flac'].includes(carrier);
+    const audio = carrier === 'flac' ? flac : wav;
+    const signal = { get aborted() { return Boolean(workerData.cancelBuffer && Atomics.load(new Int32Array(workerData.cancelBuffer), 0)); } };
+    const operation = isAudio ? (workerData.mode === 'encode' ? audio.encodeFile : audio.decodeFile) : (workerData.mode === 'encode' ? encodeFile : decodeFile);
     const destination = workerData.chooseDestination ? (name) => {
       password = null;
       return new Promise((resolve, reject) => {
@@ -18,9 +24,10 @@ const { encodeFile, decodeFile, FormatError } = require('./core.cjs');
         parentPort.postMessage({ type: 'prepared', name });
       });
     } : workerData.outputPath;
-    const result = await operation(workerData.inputPath, password, destination, workerData.appearance);
+    const result = await operation(workerData.inputPath, password, destination, isAudio ? { signal, ffmpeg: workerData.ffmpeg } : workerData.appearance);
     parentPort.postMessage({ ok: true, canceled: Boolean(result.canceled) });
   } catch (error) {
+    if (error.code === 'ABORT_ERR') { parentPort.postMessage({ ok: true, canceled: true }); return; }
     parentPort.postMessage({
       ok: false,
       code: typeof error.code === 'string' ? error.code : undefined,

@@ -4,3 +4,9 @@ artifacts/
 *.log
 .DS_Store
 .ips-write-*/
+
+.ips-wav-*/
+.ips-flac-*/
+experimental/mp4-poc/comparison/
+experimental/mp4-poc/test-work/
+experimental/mp4-poc/*.tap

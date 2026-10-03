@@ -1,11 +1,17 @@
-# Beyond the PNG prototype
+# Development priorities
 
-Plain PNG v1 and reversible Glitch PNG v2 are implemented carriers. Video remains a design/benchmark discussion.
+Implemented locally: editable export/recovery filenames; Plain PNG and reversible Glitch profiles with profile-3 exports and legacy recovery; source-first format selection; WAV streaming export/recovery; experimental FLAC via an installed FFmpeg; bounded cancellation, authenticated publication and uniform format summaries. All GUI source caps remain 16 MiB.
 
-Potential carriers include lossless video for density and robust high-contrast symbol grids plus error correction for lossy video/JPEG. The encrypted envelope should remain separate from media modulation, sync, and error correction; real encrypted bytes must travel in pixels/frames, without sidecars. Carrier transforms do not replace authenticated encryption.
+## Release gates
 
-Priorities are reliable recovery and useful visual design before density/efficiency. Future presets and advanced radio/slider controls could trade capacity against robustness and appearance. They must never silently weaken password derivation or authenticated encryption. No disabled placeholder controls imply these formats currently work.
+A released package must work without users installing FFmpeg. Include suitable codec support or an appropriately packaged dependency only after applicable licensing/source/notice obligations, supported-platform packaging and clean-machine recovery tests are resolved. No new release is authorized by the current source checkpoint. Existing development builds with optional external FFmpeg do not satisfy this gate.
 
-The PNG prototype verifies an in-memory export by decoding/decrypting its generated PNG and comparing the recovered bytes before publishing the new output. Future lossy carriers need empirical corruption/transport tests, clear capacity estimates, and verified export round-trips before claiming support.
+Remaining work includes independent security review, native platform/dialog/accessibility QA, crash/power-loss cleanup, explicit disk budgets, stronger native-process resource isolation, clean-machine packaging/signing and wider corrupt-media tests. Never disable Electron sandboxing or weaken authentication to make a build work.
 
-Folder support is future work: preserve directory hierarchy and original filenames inside authenticated encryption, while requiring explicit recovery destinations and safe path validation. The current MVP encrypts one file at a time; it provides no plausible-deniability or stealth guarantee.
+## Future carriers and budgets
+
+JPEG is unimplemented. The isolated MP4 visible-symbol prototype demonstrates small exact round trips and density tradeoffs, not GUI-ready video support or robust arbitrary transcode recovery. Keep its 64 KiB cap; do not infer larger capacity from measured expansion alone.
+
+Approved output design targets (decimal units), not current capacity: PNG 100/500 MB; JPEG 25/100 MB; WAV and FLAC 1/4 GB; video 5/50 GB for default/advanced. Any future accepted source limit must also satisfy implementation, dimensions/duration, memory, scratch disk and filesystem constraints. At the measured 4px video packing, 2.5 hours carries about 270 MB of original data; 50 GB encoded is not a promise of practical multi-GB input support.
+
+Folder support, alternative key modes and lossy carriers remain future work. Preserve hierarchy only inside authenticated metadata and require safe, explicit recovery destinations. No stealth, plausible-deniability or quantum-safety guarantee is implied.
